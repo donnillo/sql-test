@@ -51,19 +51,20 @@ class Database(TaskMixin, Protocol):
             rows = [
                 *rows[:max_rows // 2],
                 tuple(None for _ in headers),
-                *rows[max_rows // 2 + skipped - 1:]
+                *rows[max_rows // 2 + skipped + 1:]
             ]
 
         table = tabulate(
             rows,
             headers=headers,
             tablefmt="rounded_outline",
-            missingval="...",
+            missingval="\u00b7" * 3,
+            floatfmt=",.2f",
         )
 
         width = len(table.partition("\n")[0])
-        title = f" {getattr(self.target.__table__, "name")} "
-        print(f"{title:\u2500^{width}}")
+        if (title := getattr(self.target.__table__, "name", None)):
+            print(f"{f" {title} ":\u2500^{width}}")
         print(table)
         if skipped > 1:
             print(f"{skipped} rows skipped")

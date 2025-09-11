@@ -3,6 +3,7 @@ import datetime
 from collections.abc import Generator
 
 from model.employees import Presence, Employee
+from utils.fake import finite_sequence_gen
 
 
 def split_time(value: float) -> tuple[int, int, int]:
@@ -32,7 +33,7 @@ def get_presence() -> Presence:
 
 
 def get_employee() -> Generator[Employee, None, None]:
-    names = [
+    for name in finite_sequence_gen(
         "Александр",
         "Анастасия",
         "Данила",
@@ -45,9 +46,6 @@ def get_employee() -> Generator[Employee, None, None]:
         "Сергей",
         "Дмитрий",
         "Владимир",
-    ]
-    random.shuffle(names)
-    length = len(names)
-    names = names[:random.randint(int(0.8 * length), length)]
-    while names:
-        yield Employee(names.pop())
+        loss_rate=0.2
+    ):
+        yield Employee(name)
