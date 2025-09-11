@@ -1,10 +1,7 @@
-from sqlalchemy import select
-from tabulate import tabulate
-
 import model.employees
 from model.employees import EmployeePresence
 from tasks.common import Database, TaskMixin
-from utils.fake import yesterday
+from utils.dates import yesterday
 from utils.fake.employees import get_employee, get_presence
 
 

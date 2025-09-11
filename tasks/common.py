@@ -40,11 +40,30 @@ class Database(TaskMixin, Protocol):
             session.add_all(data)
             session.commit()
 
-    def print_table(self):
+    def print_table(self, max_rows: int = 20):
         with self.orm() as session:
             rows = session.execute(
                 select(*self.target.__table__.columns)
             ).all()
 
         headers = rows[0]._fields
-        print(tabulate(rows, headers=headers, tablefmt="rounded_outline"))
+        if (skipped := abs(min(max_rows - len(rows), 0))) > 1:
+            rows = [
+                *rows[:max_rows // 2],
+                tuple(None for _ in headers),
+                *rows[max_rows // 2 + skipped - 1:]
+            ]
+
+        table = tabulate(
+            rows,
+            headers=headers,
+            tablefmt="rounded_outline",
+            missingval="...",
+        )
+
+        width = len(table.partition("\n")[0])
+        title = f" {getattr(self.target.__table__, "name")} "
+        print(f"{title:\u2500^{width}}")
+        print(table)
+        if skipped > 1:
+            print(f"{skipped} rows skipped")
