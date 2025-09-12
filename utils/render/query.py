@@ -8,5 +8,5 @@ def render_query(statement: sqlalchemy.sql.expression.Selectable):
         str(statement.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
-        )), reindent=True, keyword_case="lower",
+        )).lower(), reindent=True, keyword_case="lower",
     )
