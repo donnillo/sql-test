@@ -3,7 +3,7 @@
 #### Run sql test for task #1
 
 ```bash
-kiselevda@DONNILL0:~/workspace/hh.ru/sql_test$ uv run sql.py 1
+uv run sql.py 1
 ```
 
 #### Example output for task #1
@@ -85,7 +85,7 @@ where hourly.hour > 0
 #### Run sql test for task #2
 
 ```bash
-kiselevda@DONNILL0:~/workspace/hh.ru/sql_test$ uv run sql.py 2
+uv run sql.py 2
 ```
 
 ### Example output for task #2
