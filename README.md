@@ -34,12 +34,12 @@ from
       (select hours.hour as hour
       from generate_series(1, 23) as hours(hour)) as hours
     left outer join
-      (select EXTRACT(hour
+      (select extract(hour
                       from employee_presence.arrival) as hour,
               1 as count_in
       from employee_presence) as arrival on hours.hour = arrival.hour
     left outer join
-      (select EXTRACT(hour
+      (select extract(hour
                       from employee_presence.departure) as hour,
               -1 as count_out
       from employee_presence) as departure on hours.hour = departure.hour
