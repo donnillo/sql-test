@@ -7,8 +7,6 @@ from model.employees import EmployeePresence
 from tasks.common import Database, TaskMixin
 from utils.dates import yesterday
 from utils.fake.employees import get_employee, get_presence
-from utils.render import render_table
-from utils.render import render_query
 
 
 class TaskOne(TaskMixin):
@@ -26,7 +24,7 @@ class TaskOne(TaskMixin):
 
 
 class TaskOneDatabase(TaskOne, Database):
-    def query(self):
+    def generate_query(self):
         hours = select(
             func.generate_series(0, 23)
             .table_valued("hour").render_derived("hours")
@@ -58,7 +56,7 @@ class TaskOneDatabase(TaskOne, Database):
             hours.c.hour.asc()
         ).subquery("hourly")
 
-        stmt = select(
+        return select(
             hourly.c.hour,
             func.coalesce(
                 func.sum(hourly.c.count).over(
@@ -66,10 +64,3 @@ class TaskOneDatabase(TaskOne, Database):
                     rows=(None, -1),
                 ), 0).label("num_persons")
         ).where(hourly.c.hour > 0)
-
-        print(f"\n{render_query(stmt)}\n")
-
-        with self.orm() as session:
-            rows = session.execute(stmt).all()
-
-        render_table(rows, title="query_result")

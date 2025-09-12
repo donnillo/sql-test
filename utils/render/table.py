@@ -6,7 +6,7 @@ import sqlalchemy
 
 def render_table(
     rows: Sequence[sqlalchemy.engine.Row], *,
-    max_rows: int = 24,
+    max_rows: int = 31,
     title: str | None = None
 ):
     headers = rows[0]._fields

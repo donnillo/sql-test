@@ -11,6 +11,7 @@ from sqlalchemy.orm import MappedClassProtocol
 from sqlalchemy.orm import sessionmaker
 
 from utils.render import render_table
+from utils.render import render_query
 
 
 class TaskMixin(Protocol):
@@ -20,7 +21,7 @@ class TaskMixin(Protocol):
     def generate_data(self) -> list[MappedClassProtocol]:
         ...
 
-    def query(self):
+    def generate_query(self) -> sqlalchemy.sql.expression.Select:
         ...
 
 
@@ -59,3 +60,14 @@ class Database(TaskMixin, Protocol):
             session.rollback()
 
         render_table(rows, title=getattr(self.target.__table__, "name", None))
+
+    def run_query(self):
+        stmt = self.generate_query()
+
+        print(f"\n{render_query(stmt)}\n")
+
+        with self.orm() as session:
+            rows = session.execute(stmt).all()
+            session.rollback()
+
+        render_table(rows, title="query_result")

@@ -1,4 +1,6 @@
-#### Usage
+### Usage
+
+#### Run sql test for task #1
 
 ```bash
 kiselevda@DONNILL0:~/workspace/hh.ru/sql_test$ uv run sql.py 1
@@ -49,7 +51,6 @@ where hourly.hour > 0
 ```
 
 ```bash
-
 ────── query_result ──────
 ╭────────┬───────────────╮
 │   hour │   num_persons │
@@ -78,4 +79,101 @@ where hourly.hour > 0
 │     22 │             0 │
 │     23 │             0 │
 ╰────────┴───────────────╯
+```
+
+
+#### Run sql test for task #2
+
+```bash
+kiselevda@DONNILL0:~/workspace/hh.ru/sql_test$ uv run sql.py 2
+```
+
+### Example output for task #2
+
+```bash
+──────────── client_balance ─────────────
+╭─────────────┬────────────┬────────────╮
+│   client_id │ day        │    balance │
+├─────────────┼────────────┼────────────┤
+│           1 │ 2025-08-11 │ 186,000.00 │
+│           1 │ 2025-08-12 │  29,000.00 │
+│           1 │ 2025-08-13 │ 100,000.00 │
+│           1 │ 2025-08-14 │       0.00 │
+│           1 │ 2025-08-15 │  21,666.50 │
+│           1 │ 2025-08-16 │ 121,000.00 │
+│           1 │ 2025-08-17 │  98,200.00 │
+│           1 │ 2025-08-18 │ 178,900.00 │
+│           1 │ 2025-08-19 │ 588,576.38 │
+│           1 │ 2025-08-20 │ 296,358.25 │
+│           1 │ 2025-08-21 │  62,950.00 │
+│           1 │ 2025-08-22 │  84,700.00 │
+│           1 │ 2025-08-23 │ 592,678.00 │
+│           1 │ 2025-08-24 │ 173,000.00 │
+│           1 │ 2025-08-25 │ 200,000.00 │
+│           1 │ 2025-08-26 │ 173,600.00 │
+│           1 │ 2025-08-27 │ 163,000.00 │
+│           1 │ 2025-08-28 │  68,000.00 │
+│           1 │ 2025-08-29 │       0.00 │
+│           1 │ 2025-08-30 │ 107,420.00 │
+│           1 │ 2025-08-31 │  53,225.27 │
+│           1 │ 2025-09-01 │ 130,546.00 │
+│           1 │ 2025-09-02 │ 208,700.00 │
+│           1 │ 2025-09-03 │ 406,980.00 │
+│           1 │ 2025-09-04 │ 186,161.91 │
+│           1 │ 2025-09-05 │       0.00 │
+│           1 │ 2025-09-06 │ 199,000.00 │
+│           1 │ 2025-09-07 │ 221,166.00 │
+│           1 │ 2025-09-08 │       0.00 │
+│           1 │ 2025-09-09 │ 245,176.00 │
+│           1 │ 2025-09-10 │ 218,880.00 │
+│           1 │ 2025-09-11 │  92,555.00 │
+╰─────────────┴────────────┴────────────╯
+```
+
+```sql
+select distinct on (periodized.client_id,
+                    periodized.period) periodized.client_id,
+                   first_value(periodized.period_start) over (partition by periodized.period) as period_start,
+                   last_value(periodized.period_end) over (partition by periodized.period) as period_end,
+                   avg(periodized.balance) over (partition by periodized.period) as avg_balance_within_period
+from
+  (select pre_periodized.client_id as client_id,
+          pre_periodized.day as period_start,
+          case
+              when (pre_periodized.next = 0) then pre_periodized.day
+              else pre_periodized.day
+          end as period_end,
+          pre_periodized.period as period,
+          pre_periodized.balance as balance
+   from
+     (select client_balance.client_id as client_id,
+             client_balance.day as day,
+             client_balance.balance as balance,
+             sum(case
+                     when (client_balance.balance = 0) then 1
+                     else 0
+                 end) over (
+                            order by client_balance.client_id, client_balance.day) as period,
+             lead(client_balance.balance, 1) over (
+                                                   order by client_balance.client_id, client_balance.day) as next
+      from client_balance
+      order by client_balance.client_id,
+               client_balance.day) as pre_periodized
+   where pre_periodized.balance > 0) as periodized
+order by periodized.client_id,
+         periodized.period,
+         periodized.period_start
+```
+
+```bash
+─────────────────────────────── query_result ────────────────────────────────
+╭─────────────┬────────────────┬──────────────┬─────────────────────────────╮
+│   client_id │ period_start   │ period_end   │   avg_balance_within_period │
+├─────────────┼────────────────┼──────────────┼─────────────────────────────┤
+│           1 │ 2025-08-11     │ 2025-08-13   │                  105,000.00 │
+│           1 │ 2025-08-15     │ 2025-08-28   │                  201,616.37 │
+│           1 │ 2025-08-30     │ 2025-09-04   │                  182,172.20 │
+│           1 │ 2025-09-06     │ 2025-09-07   │                  210,083.00 │
+│           1 │ 2025-09-09     │ 2025-09-11   │                  185,537.00 │
+╰─────────────┴────────────────┴──────────────┴─────────────────────────────╯
 ```
