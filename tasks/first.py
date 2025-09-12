@@ -1,8 +1,14 @@
+from sqlalchemy import select
+from sqlalchemy import func
+from sqlalchemy import literal
+
 import model.employees
 from model.employees import EmployeePresence
 from tasks.common import Database, TaskMixin
 from utils.dates import yesterday
 from utils.fake.employees import get_employee, get_presence
+from utils.render import render_table
+from utils.render import render_query
 
 
 class TaskOne(TaskMixin):
@@ -20,4 +26,48 @@ class TaskOne(TaskMixin):
 
 
 class TaskOneDatabase(TaskOne, Database):
-    pass
+    def query(self):
+        hours = select(
+            func.generate_series(1, 23)
+            .table_valued("hour").render_derived("hours")
+        ).subquery("hours")
+
+        arrival = select(
+            func.extract("hour", EmployeePresence.arrival).label("hour"),
+            literal(1).label("count_in")
+        ).subquery("arrival")
+
+        departure = select(
+            func.extract("hour", EmployeePresence.departure).label("hour"),
+            literal(-1).label("count_out")
+        ).subquery("departure")
+
+        hourly = select(
+            hours.c.hour,
+            func.sum(
+                func.coalesce(arrival.c.count_in, 0) +
+                func.coalesce(departure.c.count_out, 0)
+            ).label("count"),
+        ).join(
+            arrival, hours.c.hour == arrival.c.hour, isouter=True
+        ).join(
+            departure, hours.c.hour == departure.c.hour, isouter=True
+        ).group_by(
+            hours.c.hour,
+        ).order_by(
+            hours.c.hour.asc()
+        ).subquery("hourly")
+
+        stmt = select(
+            hourly.c.hour,
+            func.sum(hourly.c.count).over(
+                order_by=hourly.c.hour,
+            ).label("num_persons")
+        )
+
+        print(f"\n{render_query(stmt)}\n")
+
+        with self.orm() as session:
+            rows = session.execute(stmt).all()
+
+        render_table(rows, title="query_result")

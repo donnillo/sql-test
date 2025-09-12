@@ -37,10 +37,9 @@ class EmployeePresence(Base):
     )
     employee: Mapped[Employee] = relationship(lazy="joined", innerjoin=True)
     day: Mapped[datetime.date] = mapped_column(primary_key=True)
-    presence: Mapped[Presence] = composite(
-        mapped_column("arrival"),
-        mapped_column("departure"),
-    )
+    arrival: Mapped[datetime.time]
+    departure: Mapped[datetime.time]
+    presence: Mapped[Presence] = composite("arrival", "departure")
 
     def __repr__(self):
         return f"{self.employee.name:^15} {self.day!s} {self.presence!s}"

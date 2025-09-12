@@ -11,3 +11,4 @@ if __name__ == "__main__":
     elif task == 2:
         db = TaskTwoDatabase()
     db.print_table()
+    db.query()

@@ -6,10 +6,12 @@ import sqlalchemy
 import sqlalchemy.orm
 from sqlalchemy import create_engine
 from sqlalchemy import select
+from sqlalchemy import event
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import MappedClassProtocol
 from sqlalchemy.orm import sessionmaker
-from tabulate import tabulate
+
+from utils.render import render_table
 
 
 class TaskMixin(Protocol):
@@ -19,13 +21,19 @@ class TaskMixin(Protocol):
     def generate_data(self) -> list[MappedClassProtocol]:
         ...
 
+    def query(self):
+        ...
+
 
 class Database(TaskMixin, Protocol):
     engine: sqlalchemy.engine.Engine
     Session: sessionmaker
 
-    def __init__(self):
-        self.engine = create_engine("duckdb:///:memory:")
+    def __init__(self, echo: bool = False):
+        self.engine = create_engine(
+            "duckdb:///:memory:",
+            echo=echo,
+        )
         self.Session = sessionmaker(self.engine)
         self.Base.metadata.create_all(self.engine)
         self.populate()
@@ -33,6 +41,10 @@ class Database(TaskMixin, Protocol):
     @contextmanager
     def orm(self) -> Generator[sqlalchemy.orm.Session, None, None]:
         yield self.Session()
+
+    @contextmanager
+    def core(self) -> Generator[sqlalchemy.engine.Connection, None, None]:
+        yield self.engine.connect()
 
     def populate(self):
         with self.orm() as session:
@@ -45,26 +57,6 @@ class Database(TaskMixin, Protocol):
             rows = session.execute(
                 select(*self.target.__table__.columns)
             ).all()
+            session.rollback()
 
-        headers = rows[0]._fields
-        if (skipped := abs(min(max_rows - len(rows), 0))) > 1:
-            rows = [
-                *rows[:max_rows // 2],
-                tuple(None for _ in headers),
-                *rows[max_rows // 2 + skipped + 1:]
-            ]
-
-        table = tabulate(
-            rows,
-            headers=headers,
-            tablefmt="rounded_outline",
-            missingval="\u00b7" * 3,
-            floatfmt=",.2f",
-        )
-
-        width = len(table.partition("\n")[0])
-        if (title := getattr(self.target.__table__, "name", None)):
-            print(f"{f" {title} ":\u2500^{width}}")
-        print(table)
-        if skipped > 1:
-            print(f"{skipped} rows skipped")
+        render_table(rows, title=getattr(self.target.__table__, "name", None))
