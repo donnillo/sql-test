@@ -23,4 +23,5 @@ class TaskTwo(TaskMixin):
 
 
 class TaskTwoDatabase(TaskTwo, Database):
-    pass
+    def query(self):
+        pass

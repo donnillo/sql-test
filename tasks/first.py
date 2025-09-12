@@ -28,7 +28,7 @@ class TaskOne(TaskMixin):
 class TaskOneDatabase(TaskOne, Database):
     def query(self):
         hours = select(
-            func.generate_series(1, 23)
+            func.generate_series(0, 23)
             .table_valued("hour").render_derived("hours")
         ).subquery("hours")
 
@@ -60,10 +60,12 @@ class TaskOneDatabase(TaskOne, Database):
 
         stmt = select(
             hourly.c.hour,
-            func.sum(hourly.c.count).over(
-                order_by=hourly.c.hour,
-            ).label("num_persons")
-        )
+            func.coalesce(
+                func.sum(hourly.c.count).over(
+                    order_by=hourly.c.hour,
+                    rows=(None, -1),
+                ), 0).label("num_persons")
+        ).where(hourly.c.hour > 0)
 
         print(f"\n{render_query(stmt)}\n")
 

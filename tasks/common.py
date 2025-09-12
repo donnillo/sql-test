@@ -6,7 +6,6 @@ import sqlalchemy
 import sqlalchemy.orm
 from sqlalchemy import create_engine
 from sqlalchemy import select
-from sqlalchemy import event
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import MappedClassProtocol
 from sqlalchemy.orm import sessionmaker
@@ -52,7 +51,7 @@ class Database(TaskMixin, Protocol):
             session.add_all(data)
             session.commit()
 
-    def print_table(self, max_rows: int = 20):
+    def print_table(self):
         with self.orm() as session:
             rows = session.execute(
                 select(*self.target.__table__.columns)
