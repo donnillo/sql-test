@@ -88,7 +88,7 @@ where hourly.hour > 0
 uv run sql.py 2
 ```
 
-### Example output for task #2
+#### Example output for task #2
 
 ```bash
 ──────────── client_balance ─────────────
