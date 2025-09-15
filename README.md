@@ -13,38 +13,38 @@ uv run sql.py --task 1
 ╭───────────────┬────────────┬───────────┬─────────────╮
 │   employee_id │ day        │ arrival   │ departure   │
 ├───────────────┼────────────┼───────────┼─────────────┤
-│             1 │ 2025-09-11 │ 08:49:21  │ 18:33:52    │
-│             2 │ 2025-09-11 │ 13:25:32  │ 18:17:09    │
-│             3 │ 2025-09-11 │ 09:15:52  │ 12:02:40    │
-│             4 │ 2025-09-11 │ 09:40:15  │ 17:43:02    │
-│             5 │ 2025-09-11 │ 10:13:39  │ 18:41:57    │
-│             6 │ 2025-09-11 │ 05:52:38  │ 16:36:30    │
-│             7 │ 2025-09-11 │ 08:37:10  │ 19:13:47    │
-│             8 │ 2025-09-11 │ 09:47:48  │ 19:44:41    │
-│             9 │ 2025-09-11 │ 12:05:15  │ 19:33:39    │
-│            10 │ 2025-09-11 │ 09:33:45  │ 22:22:24    │
-│            11 │ 2025-09-11 │ 09:13:00  │ 19:27:36    │
-│            12 │ 2025-09-11 │ 08:58:26  │ 17:51:37    │
+│             1 │ 2025-09-11 │ 05:45:43  │ 20:07:44    │
+│             2 │ 2025-09-11 │ 08:50:12  │ 17:07:03    │
+│             3 │ 2025-09-11 │ 07:33:07  │ 18:32:35    │
+│             4 │ 2025-09-11 │ 09:35:04  │ 21:49:16    │
+│             5 │ 2025-09-11 │ 09:05:04  │ 19:52:04    │
+│             6 │ 2025-09-11 │ 08:24:20  │ 18:22:07    │
+│             7 │ 2025-09-11 │ 09:14:15  │ 19:18:02    │
+│             8 │ 2025-09-11 │ 11:14:45  │ 17:53:59    │
+│             9 │ 2025-09-11 │ 07:34:24  │ 21:39:11    │
+│            10 │ 2025-09-11 │ 12:04:33  │ 22:58:46    │
+│            11 │ 2025-09-11 │ 10:41:57  │ 20:31:10    │
+│            12 │ 2025-09-11 │ 12:49:52  │ 19:26:11    │
 ╰───────────────┴────────────┴───────────┴─────────────╯
 ```
 
 ```sql
 select distinct on (hours.hour) hours.hour,
-                   coalesce(sum(coalesce(arrival.count_in, 0) + coalesce(departure.count_out, 0)) over (
-                                                                                                        order by hours.hour rows between unbounded preceding and 1 preceding), 0) as num_persons
+                   coalesce(sum(case
+                                    when (arrival.arrival is not null) then 1
+                                    else 0
+                                end + case
+                                          when (departure.departure is not null) then -1
+                                          else 0
+                                      end) over (
+                                                 order by hours.hour rows between unbounded preceding and 1 preceding), 0) as num_persons
 from
   (select hours.hour as hour
    from generate_series(0, 23) as hours(hour)) as hours
-left outer join
-  (select extract(hour
-                  from employee_presence.arrival) as hour,
-          1 as count_in
-   from employee_presence) as arrival on hours.hour = arrival.hour
-left outer join
-  (select extract(hour
-                  from employee_presence.departure) as hour,
-          -1 as count_out
-   from employee_presence) as departure on hours.hour = departure.hour
+left outer join employee_presence as arrival on hours.hour = extract(hour
+                                                                     from arrival.arrival)
+left outer join employee_presence as departure on hours.hour = extract(hour
+                                                                       from departure.departure)
 order by hours.hour asc
 ```
 
@@ -61,20 +61,20 @@ order by hours.hour asc
 │      5 │             0 │
 │      6 │             1 │
 │      7 │             1 │
-│      8 │             1 │
-│      9 │             4 │
-│     10 │             9 │
-│     11 │            10 │
+│      8 │             3 │
+│      9 │             5 │
+│     10 │             8 │
+│     11 │             9 │
 │     12 │            10 │
-│     13 │            10 │
-│     14 │            11 │
-│     15 │            11 │
-│     16 │            11 │
-│     17 │            10 │
-│     18 │             8 │
-│     19 │             5 │
-│     20 │             1 │
-│     21 │             1 │
+│     13 │            12 │
+│     14 │            12 │
+│     15 │            12 │
+│     16 │            12 │
+│     17 │            12 │
+│     18 │            10 │
+│     19 │             8 │
+│     20 │             5 │
+│     21 │             3 │
 │     22 │             1 │
 │     23 │             0 │
 ╰────────┴───────────────╯

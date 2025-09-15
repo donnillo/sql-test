@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy import func
 from sqlalchemy import literal
+from sqlalchemy import case
+from sqlalchemy.orm import aliased
 
 import model.employees
 from model.employees import EmployeePresence
@@ -30,31 +32,29 @@ class TaskOneDatabase(TaskOne, Database):
             .table_valued("hour").render_derived("hours")
         ).subquery("hours")
 
-        arrival = select(
-            func.extract("hour", EmployeePresence.arrival).label("hour"),
-            literal(1).label("count_in")
-        ).subquery("arrival")
-
-        departure = select(
-            func.extract("hour", EmployeePresence.departure).label("hour"),
-            literal(-1).label("count_out")
-        ).subquery("departure")
+        arrival = aliased(EmployeePresence, name="arrival")
+        departure = aliased(EmployeePresence, name="departure")
 
         return select(
             hours.c.hour,
             func.coalesce(
                 func.sum(
-                    func.coalesce(arrival.c.count_in, 0) +
-                    func.coalesce(departure.c.count_out, 0)
+                    case((arrival.arrival != None, 1), else_=0).label("count_in") +
+                    case((departure.departure != None, -1),
+                         else_=0).label("count_out")
                 ).over(
                     order_by=hours.c.hour,
                     rows=(None, -1)
                 ), 0
             ).label("num_persons"),
         ).join(
-            arrival, hours.c.hour == arrival.c.hour, isouter=True
+            arrival,
+            hours.c.hour == func.extract("hour", arrival.arrival),
+            isouter=True,
         ).join(
-            departure, hours.c.hour == departure.c.hour, isouter=True
+            departure,
+            hours.c.hour == func.extract("hour", departure.departure),
+            isouter=True,
         ).order_by(
             hours.c.hour.asc(),
         ).distinct(
