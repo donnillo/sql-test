@@ -43,8 +43,11 @@ class TaskOneDatabase(TaskOne, Database):
                     case((departure.departure != None, -1),
                          else_=0).label("count_out")
                 ).over(
-                    order_by=hours.c.hour,
-                    rows=(None, -1)
+                    order_by=(
+                        hours.c.hour,
+                        arrival.arrival,
+                        departure.departure,
+                    ), rows=(None, -1)
                 ), 0
             ).label("num_persons"),
         ).join(
