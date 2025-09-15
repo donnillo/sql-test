@@ -37,7 +37,7 @@ select distinct on (hours.hour) hours.hour,
                                           when (departure.departure is not null) then -1
                                           else 0
                                       end) over (
-                                                 order by hours.hour rows between unbounded preceding and 1 preceding), 0) as num_persons
+                                                 order by hours.hour, arrival.arrival, departure.departure rows between unbounded preceding and 1 preceding), 0) as num_persons
 from
   (select hours.hour as hour
    from generate_series(0, 23) as hours(hour)) as hours
