@@ -29,7 +29,7 @@ class TaskTwo(TaskMixin):
 
 class TaskTwoDatabase(TaskTwo, Database):
     def generate_query(self):
-        pre_periodized = select(
+        periodized = select(
             ClientBalance.client_id,
             ClientBalance.day,
             ClientBalance.balance,
@@ -41,38 +41,20 @@ class TaskTwoDatabase(TaskTwo, Database):
             ).over(
                 order_by=(ClientBalance.client_id, ClientBalance.day)
             ).label("period"),
-            func.lead(
-                ClientBalance.balance, 1,
-            ).over(
-                order_by=(ClientBalance.client_id, ClientBalance.day)
-            ).label("next")
         ).order_by(
             ClientBalance.client_id,
             ClientBalance.day,
         ).subquery("pre_periodized")
 
-        periodized = select(
-            pre_periodized.c.client_id,
-            pre_periodized.c.day.label("period_start"),
-            case(
-                (pre_periodized.c.next == 0, pre_periodized.c.day),
-                else_=pre_periodized.c.day,
-            ).label("period_end"),
-            pre_periodized.c.period,
-            pre_periodized.c.balance,
-        ).where(
-            pre_periodized.c.balance > 0
-        ).subquery("periodized")
-
         return select(
             periodized.c.client_id,
             func.first_value(
-                periodized.c.period_start
+                periodized.c.day
             ).over(
                 partition_by=periodized.c.period,
             ).label("period_start"),
             func.last_value(
-                periodized.c.period_end
+                periodized.c.day
             ).over(
                 partition_by=periodized.c.period,
             ).label("period_end"),
@@ -81,10 +63,12 @@ class TaskTwoDatabase(TaskTwo, Database):
             ).over(
                 partition_by=periodized.c.period,
             ).label("avg_balance_within_period"),
+        ).where(
+            periodized.c.balance > 0,
         ).order_by(
             periodized.c.client_id,
             periodized.c.period,
-            periodized.c.period_start,
+            periodized.c.day,
         ).distinct(
             periodized.c.client_id,
             periodized.c.period,

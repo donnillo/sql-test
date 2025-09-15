@@ -131,38 +131,27 @@ uv run sql.py 2
 ```
 
 ```sql
-select distinct on (periodized.client_id,
-                    periodized.period) periodized.client_id,
-                   first_value(periodized.period_start) over (partition by periodized.period) as period_start,
-                   last_value(periodized.period_end) over (partition by periodized.period) as period_end,
-                   avg(periodized.balance) over (partition by periodized.period) as avg_balance_within_period
+select distinct on (pre_periodized.client_id,
+                    pre_periodized.period) pre_periodized.client_id,
+                   first_value(pre_periodized.day) over (partition by pre_periodized.period) as period_start,
+                   last_value(pre_periodized.day) over (partition by pre_periodized.period) as period_end,
+                   avg(pre_periodized.balance) over (partition by pre_periodized.period) as avg_balance_within_period
 from
-  (select pre_periodized.client_id as client_id,
-          pre_periodized.day as period_start,
-          case
-              when (pre_periodized.next = 0) then pre_periodized.day
-              else pre_periodized.day
-          end as period_end,
-          pre_periodized.period as period,
-          pre_periodized.balance as balance
-   from
-     (select client_balance.client_id as client_id,
-             client_balance.day as day,
-             client_balance.balance as balance,
-             sum(case
-                     when (client_balance.balance = 0) then 1
-                     else 0
-                 end) over (
-                            order by client_balance.client_id, client_balance.day) as period,
-             lead(client_balance.balance, 1) over (
-                                                   order by client_balance.client_id, client_balance.day) as next
-      from client_balance
-      order by client_balance.client_id,
-               client_balance.day) as pre_periodized
-   where pre_periodized.balance > 0) as periodized
-order by periodized.client_id,
-         periodized.period,
-         periodized.period_start
+  (select client_balance.client_id as client_id,
+          client_balance.day as day,
+          client_balance.balance as balance,
+          sum(case
+                  when (client_balance.balance = 0) then 1
+                  else 0
+              end) over (
+                         order by client_balance.client_id, client_balance.day) as period
+   from client_balance
+   order by client_balance.client_id,
+            client_balance.day) as pre_periodized
+where pre_periodized.balance > 0
+order by pre_periodized.client_id,
+         pre_periodized.period,
+         pre_periodized.day
 ```
 
 ```bash
