@@ -44,7 +44,7 @@ class TaskTwoDatabase(TaskTwo, Database):
         ).order_by(
             ClientBalance.client_id,
             ClientBalance.day,
-        ).subquery("pre_periodized")
+        ).subquery("periodized")
 
         return select(
             periodized.c.client_id,

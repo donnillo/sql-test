@@ -131,11 +131,11 @@ uv run sql.py 2
 ```
 
 ```sql
-select distinct on (pre_periodized.client_id,
-                    pre_periodized.period) pre_periodized.client_id,
-                   first_value(pre_periodized.day) over (partition by pre_periodized.period) as period_start,
-                   last_value(pre_periodized.day) over (partition by pre_periodized.period) as period_end,
-                   avg(pre_periodized.balance) over (partition by pre_periodized.period) as avg_balance_within_period
+select distinct on (periodized.client_id,
+                    periodized.period) periodized.client_id,
+                   first_value(periodized.day) over (partition by periodized.period) as period_start,
+                   last_value(periodized.day) over (partition by periodized.period) as period_end,
+                   avg(periodized.balance) over (partition by periodized.period) as avg_balance_within_period
 from
   (select client_balance.client_id as client_id,
           client_balance.day as day,
@@ -147,11 +147,11 @@ from
                          order by client_balance.client_id, client_balance.day) as period
    from client_balance
    order by client_balance.client_id,
-            client_balance.day) as pre_periodized
-where pre_periodized.balance > 0
-order by pre_periodized.client_id,
-         pre_periodized.period,
-         pre_periodized.day
+            client_balance.day) as periodized
+where periodized.balance > 0
+order by periodized.client_id,
+         periodized.period,
+         periodized.day
 ```
 
 ```bash
