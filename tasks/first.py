@@ -40,27 +40,23 @@ class TaskOneDatabase(TaskOne, Database):
             literal(-1).label("count_out")
         ).subquery("departure")
 
-        hourly = select(
+        return select(
             hours.c.hour,
-            func.sum(
-                func.coalesce(arrival.c.count_in, 0) +
-                func.coalesce(departure.c.count_out, 0)
-            ).label("count"),
+            func.coalesce(
+                func.sum(
+                    func.coalesce(arrival.c.count_in, 0) +
+                    func.coalesce(departure.c.count_out, 0)
+                ).over(
+                    order_by=hours.c.hour,
+                    rows=(None, -1)
+                ), 0
+            ).label("num_persons"),
         ).join(
             arrival, hours.c.hour == arrival.c.hour, isouter=True
         ).join(
             departure, hours.c.hour == departure.c.hour, isouter=True
-        ).group_by(
-            hours.c.hour,
         ).order_by(
-            hours.c.hour.asc()
-        ).subquery("hourly")
-
-        return select(
-            hourly.c.hour,
-            func.coalesce(
-                func.sum(hourly.c.count).over(
-                    order_by=hourly.c.hour,
-                    rows=(None, -1),
-                ), 0).label("num_persons")
-        ).where(hourly.c.hour > 0)
+            hours.c.hour.asc(),
+        ).distinct(
+            hours.c.hour,
+        )

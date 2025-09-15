@@ -3,7 +3,7 @@
 #### Run sql test for task #1
 
 ```bash
-uv run sql.py 1
+uv run sql.py --task 1
 ```
 
 #### Example output for task #1
@@ -13,41 +13,39 @@ uv run sql.py 1
 ╭───────────────┬────────────┬───────────┬─────────────╮
 │   employee_id │ day        │ arrival   │ departure   │
 ├───────────────┼────────────┼───────────┼─────────────┤
-│             1 │ 2025-09-11 │ 08:09:57  │ 18:21:03    │
-│             2 │ 2025-09-11 │ 12:07:00  │ 14:56:57    │
-│             3 │ 2025-09-11 │ 11:19:24  │ 17:11:45    │
-│             4 │ 2025-09-11 │ 09:58:14  │ 20:30:59    │
-│             5 │ 2025-09-11 │ 08:56:52  │ 18:04:22    │
-│             6 │ 2025-09-11 │ 07:10:01  │ 17:21:20    │
-│             7 │ 2025-09-11 │ 08:26:06  │ 16:56:44    │
-│             8 │ 2025-09-11 │ 10:01:15  │ 16:46:28    │
-│             9 │ 2025-09-11 │ 15:58:39  │ 16:30:48    │
+│             1 │ 2025-09-11 │ 08:49:21  │ 18:33:52    │
+│             2 │ 2025-09-11 │ 13:25:32  │ 18:17:09    │
+│             3 │ 2025-09-11 │ 09:15:52  │ 12:02:40    │
+│             4 │ 2025-09-11 │ 09:40:15  │ 17:43:02    │
+│             5 │ 2025-09-11 │ 10:13:39  │ 18:41:57    │
+│             6 │ 2025-09-11 │ 05:52:38  │ 16:36:30    │
+│             7 │ 2025-09-11 │ 08:37:10  │ 19:13:47    │
+│             8 │ 2025-09-11 │ 09:47:48  │ 19:44:41    │
+│             9 │ 2025-09-11 │ 12:05:15  │ 19:33:39    │
+│            10 │ 2025-09-11 │ 09:33:45  │ 22:22:24    │
+│            11 │ 2025-09-11 │ 09:13:00  │ 19:27:36    │
+│            12 │ 2025-09-11 │ 08:58:26  │ 17:51:37    │
 ╰───────────────┴────────────┴───────────┴─────────────╯
 ```
 
 ```sql
-select hourly.hour,
-       coalesce(sum(hourly.count) over (
-                                        order by hourly.hour rows between unbounded preceding and 1 preceding), 0) as num_persons
+select distinct on (hours.hour) hours.hour,
+                   coalesce(sum(coalesce(arrival.count_in, 0) + coalesce(departure.count_out, 0)) over (
+                                                                                                        order by hours.hour rows between unbounded preceding and 1 preceding), 0) as num_persons
 from
-  (select hours.hour as hour,
-          sum(coalesce(arrival.count_in, 0) + coalesce(departure.count_out, 0)) as count
-   from
-     (select hours.hour as hour
-      from generate_series(0, 23) as hours(hour)) as hours
-   left outer join
-     (select extract(hour
-                     from employee_presence.arrival) as hour,
-             1 as count_in
-      from employee_presence) as arrival on hours.hour = arrival.hour
-   left outer join
-     (select extract(hour
-                     from employee_presence.departure) as hour,
-             -1 as count_out
-      from employee_presence) as departure on hours.hour = departure.hour
-   group by hours.hour
-   order by hours.hour asc) as hourly
-where hourly.hour > 0
+  (select hours.hour as hour
+   from generate_series(0, 23) as hours(hour)) as hours
+left outer join
+  (select extract(hour
+                  from employee_presence.arrival) as hour,
+          1 as count_in
+   from employee_presence) as arrival on hours.hour = arrival.hour
+left outer join
+  (select extract(hour
+                  from employee_presence.departure) as hour,
+          -1 as count_out
+   from employee_presence) as departure on hours.hour = departure.hour
+order by hours.hour asc
 ```
 
 ```bash
@@ -55,28 +53,29 @@ where hourly.hour > 0
 ╭────────┬───────────────╮
 │   hour │   num_persons │
 ├────────┼───────────────┤
+│      0 │             0 │
 │      1 │             0 │
 │      2 │             0 │
 │      3 │             0 │
 │      4 │             0 │
 │      5 │             0 │
-│      6 │             0 │
-│      7 │             0 │
+│      6 │             1 │
+│      7 │             1 │
 │      8 │             1 │
 │      9 │             4 │
-│     10 │             5 │
-│     11 │             6 │
-│     12 │             7 │
-│     13 │             8 │
-│     14 │             8 │
-│     15 │             7 │
-│     16 │             8 │
-│     17 │             5 │
-│     18 │             3 │
-│     19 │             1 │
+│     10 │             9 │
+│     11 │            10 │
+│     12 │            10 │
+│     13 │            10 │
+│     14 │            11 │
+│     15 │            11 │
+│     16 │            11 │
+│     17 │            10 │
+│     18 │             8 │
+│     19 │             5 │
 │     20 │             1 │
-│     21 │             0 │
-│     22 │             0 │
+│     21 │             1 │
+│     22 │             1 │
 │     23 │             0 │
 ╰────────┴───────────────╯
 ```
@@ -85,7 +84,7 @@ where hourly.hour > 0
 #### Run sql test for task #2
 
 ```bash
-uv run sql.py 2
+uv run sql.py --task 2
 ```
 
 #### Example output for task #2
