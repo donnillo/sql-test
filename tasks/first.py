@@ -1,7 +1,5 @@
 from sqlalchemy import select
 from sqlalchemy import func
-from sqlalchemy import literal
-from sqlalchemy import case
 from sqlalchemy.orm import aliased
 
 import model.employees
@@ -35,21 +33,12 @@ class TaskOneDatabase(TaskOne, Database):
         arrival = aliased(EmployeePresence, name="arrival")
         departure = aliased(EmployeePresence, name="departure")
 
-        return select(
+        hourly = select(
             hours.c.hour,
-            func.coalesce(
-                func.sum(
-                    case((arrival.arrival != None, 1), else_=0).label("count_in") +
-                    case((departure.departure != None, -1),
-                         else_=0).label("count_out")
-                ).over(
-                    order_by=(
-                        hours.c.hour,
-                        arrival.arrival,
-                        departure.departure,
-                    ), rows=(None, -1)
-                ), 0
-            ).label("num_persons"),
+            (
+                func.count(arrival.employee_id.distinct()) -
+                func.count(departure.employee_id.distinct())
+            ).label("count"),
         ).join(
             arrival,
             hours.c.hour == func.extract("hour", arrival.arrival),
@@ -58,8 +47,20 @@ class TaskOneDatabase(TaskOne, Database):
             departure,
             hours.c.hour == func.extract("hour", departure.departure),
             isouter=True,
+        ).group_by(
+            hours.c.hour,
         ).order_by(
             hours.c.hour.asc(),
-        ).distinct(
-            hours.c.hour,
+        ).subquery("hourly")
+
+        return select(
+            hourly.c.hour,
+            func.coalesce(
+                func.sum(
+                    hourly.c.count
+                ).over(
+                    order_by=hourly.c.hour,
+                    rows=(None, -1),
+                ), 0
+            ).label("num_persons")
         )
