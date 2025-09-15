@@ -1,14 +1,7 @@
-import sys
-
-from tasks.first import TaskOneDatabase
-from tasks.second import TaskTwoDatabase
+from utils.args import get_database_from_args
 
 
 if __name__ == "__main__":
-    task = int(sys.argv[1])
-    if task == 1:
-        db = TaskOneDatabase()
-    elif task == 2:
-        db = TaskTwoDatabase()
+    db = get_database_from_args()
     db.print_table()
     db.run_query()
